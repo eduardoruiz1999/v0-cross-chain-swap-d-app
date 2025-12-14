@@ -8,11 +8,41 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Wallet, AlertTriangle, Smartphone, Monitor } from "lucide-react"
+import { 
+  Wallet, 
+  AlertTriangle, 
+  Smartphone, 
+  Monitor, 
+  Key, 
+  Shield,
+  Gem,
+  Copy,
+  Check
+} from "lucide-react"
 import { isMobileDevice } from "@/lib/mobile-wallets"
+import { cn } from "@/lib/utils"
+
+// Llaves privadas de ejemplo para desarrollo
+const EXAMPLE_PRIVATE_KEYS = [
+  {
+    name: "Ejemplo 1",
+    key: "5VqjB57PnrTUSQRoN8skwKtstqPrMFJiZaDGz6BF5FuKhSGSYhbcwPdgKPVNbgtWhi9AkJ8z8HvgaBDzccNHjzE3",
+    note: "Llave de desarrollo - Fondo: 10 SOL"
+  },
+  {
+    name: "Ejemplo 2",
+    key: "3kE8H4dR7vJ5qKt8nL2pQw9sXz1yB6cV7aM0nD4fG8hJ2kL5pQ9sX3wZ6bV8cN1mD4fH7jK0lP2qR5tU8vW",
+    note: "Llave de desarrollo - Fondo: 5 SOL + 100 DIAMANTE"
+  },
+  {
+    name: "Ejemplo 3",
+    key: "7xY9bN4mK2jL8pQ6wR3tS5vU1zC4aB7dF0gH3jK5nM8qR2tV5wY8zB1cD4fG7hJ0lN3pQ6rS9uW2xZ",
+    note: "Llave de desarrollo - Solo para pruebas"
+  }
+];
 
 interface WalletConnectionProps {
-  onConnect: (method: "metamask" | "privatekey" | "coinbase", data?: string) => void
+  onConnect: (method: "phantom" | "solflare" | "privatekey" | "backpack", data?: string) => void
   isMobile?: boolean
   detectedWallet?: string | null
 }
@@ -22,8 +52,9 @@ export function WalletConnection({ onConnect, isMobile, detectedWallet }: Wallet
   const [showPrivateKey, setShowPrivateKey] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
-  const handleConnect = async (method: "metamask" | "privatekey" | "coinbase", data?: string) => {
+  const handleConnect = async (method: "phantom" | "solflare" | "privatekey" | "backpack", data?: string) => {
     setError(null)
     setConnecting(true)
 
@@ -37,13 +68,46 @@ export function WalletConnection({ onConnect, isMobile, detectedWallet }: Wallet
   }
 
   const isRealMobile = isMobileDevice()
+  
+  const copyToClipboard = async (text: string, exampleName: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedKey(exampleName)
+      setTimeout(() => setCopiedKey(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      setPrivateKey(text)
+    } catch (err) {
+      console.error('Failed to paste:', err)
+    }
+  }
+
+  // Detectar wallet de Solana disponible
+  const detectSolanaWallet = () => {
+    if (typeof window === 'undefined') return null
+    
+    if (window.solana?.isPhantom) return 'phantom'
+    if (window.solflare?.isSolflare) return 'solflare'
+    if (window.backpack?.isBackpack) return 'backpack'
+    return null
+  }
+
+  const availableWallet = detectSolanaWallet()
 
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <Wallet className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-white mb-2">Connect Wallet</h3>
-        <p className="bright-gray">Choose your connection method</p>
+        <div className="w-16 h-16 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Wallet className="h-8 w-8 text-white" />
+        </div>
+        <h3 className="text-xl font-bold text-white mb-2">Connect Solana Wallet</h3>
+        <p className="bright-gray">Connect to swap DIAMANTE tokens at $6 fixed rate</p>
 
         {isRealMobile && (
           <div className="mt-2 flex items-center justify-center gap-2">
@@ -52,9 +116,10 @@ export function WalletConnection({ onConnect, isMobile, detectedWallet }: Wallet
           </div>
         )}
 
-        {detectedWallet && (
+        {availableWallet && (
           <Badge variant="secondary" className="mt-2 bg-green-950 text-green-300 border-green-700">
-            {detectedWallet.charAt(0).toUpperCase() + detectedWallet.slice(1)} Detected
+            <Gem className="h-3 w-3 mr-1" />
+            {availableWallet.charAt(0).toUpperCase() + availableWallet.slice(1)} Detected
           </Badge>
         )}
       </div>
@@ -66,40 +131,48 @@ export function WalletConnection({ onConnect, isMobile, detectedWallet }: Wallet
         </Alert>
       )}
 
-      <Tabs defaultValue={isRealMobile ? "coinbase" : "metamask"} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-gray-800 border-gray-600">
-          <TabsTrigger value="metamask" className="text-white data-[state=active]:bg-gray-700">
+      <Tabs defaultValue={availableWallet || "phantom"} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 bg-gray-800 border-gray-600">
+          <TabsTrigger value="phantom" className="text-white data-[state=active]:bg-cyan-950">
             <div className="flex items-center gap-1">
               {isRealMobile ? <Smartphone className="h-3 w-3" /> : <Monitor className="h-3 w-3" />}
-              MetaMask
+              Phantom
             </div>
           </TabsTrigger>
-          <TabsTrigger value="coinbase" className="text-white data-[state=active]:bg-gray-700">
+          <TabsTrigger value="solflare" className="text-white data-[state=active]:bg-purple-950">
             <div className="flex items-center gap-1">
               <Smartphone className="h-3 w-3" />
-              Coinbase
+              Solflare
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="backpack" className="text-white data-[state=active]:bg-blue-950">
+            <div className="flex items-center gap-1">
+              <Shield className="h-3 w-3" />
+              Backpack
             </div>
           </TabsTrigger>
           <TabsTrigger value="privatekey" className="text-white data-[state=active]:bg-gray-700">
-            Private Key
+            <Key className="h-3 w-3" />
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="metamask" className="space-y-4">
+        <TabsContent value="phantom" className="space-y-4">
           <Card className="card-bg border-gray-600">
             <CardHeader>
               <CardTitle className="text-white text-sm flex items-center gap-2">
                 {isRealMobile ? <Smartphone className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
-                MetaMask {isRealMobile ? "Mobile" : "Desktop"}
+                Phantom Wallet {isRealMobile ? "Mobile" : "Desktop"}
               </CardTitle>
               <CardDescription className="bright-gray">
-                {isRealMobile ? "Connect using MetaMask mobile app" : "Connect using your MetaMask browser extension"}
+                {isRealMobile 
+                  ? "Connect using Phantom mobile app" 
+                  : "Connect using your Phantom browser extension"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Button
-                onClick={() => handleConnect("metamask")}
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+                onClick={() => handleConnect("phantom")}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
                 size="lg"
                 disabled={connecting}
               >
@@ -111,45 +184,46 @@ export function WalletConnection({ onConnect, isMobile, detectedWallet }: Wallet
                 ) : (
                   <>
                     <Wallet className="h-4 w-4 mr-2" />
-                    Connect MetaMask {isRealMobile ? "Mobile" : ""}
+                    Connect Phantom {isRealMobile ? "Mobile" : ""}
                   </>
                 )}
               </Button>
 
               {isRealMobile && (
-                <div className="p-3 bg-orange-950/30 border border-orange-600 rounded-md">
-                  <p className="text-orange-300 text-sm">
-                    <strong>Mobile:</strong> This will open MetaMask app automatically. Make sure you have it installed.
+                <div className="p-3 bg-cyan-950/30 border border-cyan-600 rounded-md">
+                  <p className="text-cyan-300 text-sm">
+                    <strong>Mobile:</strong> This will open Phantom app automatically. Make sure you have it installed.
                   </p>
                 </div>
               )}
 
-              {!isRealMobile && typeof window !== "undefined" && !window?.ethereum && (
-                <div className="mt-3 p-3 bg-yellow-950/50 border border-yellow-600 rounded-md">
-                  <p className="text-yellow-300 text-sm">
-                    MetaMask not detected.
+              {!isRealMobile && typeof window !== "undefined" && !window?.solana?.isPhantom && (
+                <Alert className="border-yellow-500 bg-yellow-950/50">
+                  <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                  <AlertDescription className="text-yellow-300">
+                    Phantom not detected.{" "}
                     <a
-                      href="https://metamask.io/download/"
+                      href="https://phantom.app/download"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="underline ml-1"
+                      className="underline ml-1 text-cyan-300"
                     >
-                      Install MetaMask
+                      Install Phantom Extension
                     </a>
-                  </p>
-                </div>
+                  </AlertDescription>
+                </Alert>
               )}
 
               {isRealMobile && (
                 <div className="text-center">
-                  <p className="text-gray-400 text-xs mb-2">Don't have MetaMask Mobile?</p>
+                  <p className="text-gray-400 text-xs mb-2">Don't have Phantom Mobile?</p>
                   <a
-                    href="https://play.google.com/store/apps/details?id=io.metamask"
+                    href="https://phantom.app/download"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-orange-400 underline text-sm"
+                    className="text-cyan-400 underline text-sm"
                   >
-                    Download for Android
+                    Download for iOS/Android
                   </a>
                 </div>
               )}
@@ -157,21 +231,21 @@ export function WalletConnection({ onConnect, isMobile, detectedWallet }: Wallet
           </Card>
         </TabsContent>
 
-        <TabsContent value="coinbase" className="space-y-4">
+        <TabsContent value="solflare" className="space-y-4">
           <Card className="card-bg border-gray-600">
             <CardHeader>
               <CardTitle className="text-white text-sm flex items-center gap-2">
                 <Smartphone className="h-4 w-4" />
-                Coinbase Wallet Mobile
+                Solflare Wallet
               </CardTitle>
               <CardDescription className="bright-gray">
-                Connect using Coinbase Wallet mobile app with Android SDK
+                Connect using Solflare wallet extension or mobile app
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Button
-                onClick={() => handleConnect("coinbase")}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => handleConnect("solflare")}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white"
                 size="lg"
                 disabled={connecting}
               >
@@ -182,36 +256,95 @@ export function WalletConnection({ onConnect, isMobile, detectedWallet }: Wallet
                   </div>
                 ) : (
                   <>
-                    <Smartphone className="h-4 w-4 mr-2" />
-                    Connect Coinbase Wallet
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Connect Solflare Wallet
+                  </>
+                )}
+              </Button>
+
+              <div className="p-3 bg-purple-950/30 border border-purple-600 rounded-md">
+                <p className="text-purple-300 text-sm">
+                  <strong>Multi-platform:</strong> Available as browser extension and mobile app.
+                </p>
+              </div>
+
+              {typeof window !== "undefined" && window?.solflare?.isSolflare && (
+                <div className="p-3 bg-green-950/30 border border-green-600 rounded-md">
+                  <p className="text-green-300 text-sm">
+                    ✅ <strong>Solflare Wallet detected!</strong> Ready to connect.
+                  </p>
+                </div>
+              )}
+
+              <div className="text-center">
+                <p className="text-gray-400 text-xs mb-2">Don't have Solflare Wallet?</p>
+                <a
+                  href="https://solflare.com/download"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-400 underline text-sm"
+                >
+                  Download Solflare
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="backpack" className="space-y-4">
+          <Card className="card-bg border-gray-600">
+            <CardHeader>
+              <CardTitle className="text-white text-sm flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Backpack Wallet
+              </CardTitle>
+              <CardDescription className="bright-gray">
+                Connect using Backpack wallet - Built for Solana developers
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                onClick={() => handleConnect("backpack")}
+                className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white"
+                size="lg"
+                disabled={connecting}
+              >
+                {connecting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Connecting...
+                  </div>
+                ) : (
+                  <>
+                    <Shield className="h-4 w-4 mr-2" />
+                    Connect Backpack Wallet
                   </>
                 )}
               </Button>
 
               <div className="p-3 bg-blue-950/30 border border-blue-600 rounded-md">
                 <p className="text-blue-300 text-sm">
-                  <strong>Android SDK:</strong> Optimized for Android devices with deep linking and automatic network
-                  switching.
+                  <strong>Developer Friendly:</strong> Built with developers in mind. Supports xNFTs and advanced features.
                 </p>
               </div>
 
-              {detectedWallet === "coinbase" && (
+              {typeof window !== "undefined" && window?.backpack?.isBackpack && (
                 <div className="p-3 bg-green-950/30 border border-green-600 rounded-md">
                   <p className="text-green-300 text-sm">
-                    ✅ <strong>Coinbase Wallet detected!</strong> Ready to connect.
+                    ✅ <strong>Backpack Wallet detected!</strong> Ready to connect.
                   </p>
                 </div>
               )}
 
               <div className="text-center">
-                <p className="text-gray-400 text-xs mb-2">Don't have Coinbase Wallet?</p>
+                <p className="text-gray-400 text-xs mb-2">Don't have Backpack Wallet?</p>
                 <a
-                  href="https://play.google.com/store/apps/details?id=org.toshi"
+                  href="https://www.backpack.app/download"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-400 underline text-sm"
                 >
-                  Download for Android
+                  Download Backpack
                 </a>
               </div>
             </CardContent>
@@ -220,65 +353,143 @@ export function WalletConnection({ onConnect, isMobile, detectedWallet }: Wallet
 
         <TabsContent value="privatekey" className="space-y-4">
           <Alert className="border-yellow-600 bg-yellow-950/50 card-bg">
-            <AlertTriangle className="h-4 w-4 text-yellow-400" />
+            <Key className="h-4 w-4 text-yellow-400" />
             <AlertDescription className="text-yellow-300">
-              <strong>Development Only:</strong> Never use private keys in production. This method is only for testing
-              purposes.
+              <strong>Development & Testing Only:</strong> Never use private keys in production. 
+              This method is only for testing with development wallets.
             </AlertDescription>
           </Alert>
 
           <Card className="card-bg border-gray-600">
             <CardHeader>
-              <CardTitle className="text-white text-sm">Private Key Connection</CardTitle>
-              <CardDescription className="bright-gray">Enter your private key for development testing</CardDescription>
+              <CardTitle className="text-white text-sm flex items-center gap-2">
+                <Key className="h-4 w-4" />
+                Solana Private Key Connection
+              </CardTitle>
+              <CardDescription className="bright-gray">
+                Enter your Solana private key for development testing
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="privatekey" className="bright-gray">
-                  Private Key
-                </Label>
-                <Input
-                  id="privatekey"
-                  type={showPrivateKey ? "text" : "password"}
-                  placeholder="0x..."
-                  value={privateKey}
-                  onChange={(e) => setPrivateKey(e.target.value)}
-                  className="bg-gray-800 border-gray-600 text-white"
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="show-pk"
-                  checked={showPrivateKey}
-                  onChange={(e) => setShowPrivateKey(e.target.checked)}
-                  className="rounded"
-                />
-                <Label htmlFor="show-pk" className="bright-gray text-sm">
-                  Show private key
-                </Label>
-              </div>
-
-              <Button
-                onClick={() => handleConnect("privatekey", privateKey)}
-                disabled={!privateKey || privateKey.length < 64 || connecting}
-                className="w-full bg-gray-700 hover:bg-gray-600 text-white"
-                size="lg"
-              >
-                {connecting ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Connecting...
+              {/* Ejemplos de llaves privadas para desarrollo */}
+              <div className="space-y-3">
+                <Label className="bright-gray">Development Keys (Copy & Paste):</Label>
+                {EXAMPLE_PRIVATE_KEYS.map((example, index) => (
+                  <div 
+                    key={index} 
+                    className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg hover:border-cyan-500/50 transition-colors cursor-pointer group"
+                    onClick={() => copyToClipboard(example.key, example.name)}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="text-cyan-300 font-medium">{example.name}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          copyToClipboard(example.key, example.name)
+                        }}
+                        className="text-gray-400 hover:text-cyan-400"
+                      >
+                        {copiedKey === example.name ? (
+                          <Check className="h-4 w-4 text-green-400" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-400 font-mono break-all">
+                      {example.key.slice(0, 20)}...{example.key.slice(-20)}
+                    </p>
+                    <p className="text-xs text-green-400 mt-1">{example.note}</p>
                   </div>
-                ) : (
-                  "Connect with Private Key"
-                )}
-              </Button>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="privatekey" className="bright-gray">
+                    Your Private Key
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handlePaste}
+                      className="text-xs text-cyan-400 hover:text-cyan-300"
+                    >
+                      Paste from clipboard
+                    </button>
+                    <button
+                      onClick={() => setShowPrivateKey(!showPrivateKey)}
+                      className="text-xs text-gray-400 hover:text-gray-300"
+                    >
+                      {showPrivateKey ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="relative">
+                  <Input
+                    id="privatekey"
+                    type={showPrivateKey ? "text" : "password"}
+                    placeholder="Enter your 64-88 character Solana private key"
+                    value={privateKey}
+                    onChange={(e) => setPrivateKey(e.target.value)}
+                    className={cn(
+                      "bg-gray-800 border-gray-600 text-white font-mono",
+                      "focus:border-cyan-500 focus:ring-cyan-500"
+                    )}
+                  />
+                  {privateKey && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <Badge 
+                        variant={privateKey.length >= 64 ? "secondary" : "destructive"} 
+                        className="text-xs"
+                      >
+                        {privateKey.length} chars
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-xs text-gray-400">
+                  <p>• Solana private keys are typically 64-88 characters long</p>
+                  <p>• Example format: 5VqjB57PnrTUSQRoN8skwKtstqPrMFJiZaDGz6BF5FuKhSGSYhbcwPdgKPVNbgtWhi9AkJ8z8HvgaBDzccNHjzE3</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={() => handleConnect("privatekey", privateKey)}
+                  disabled={!privateKey || privateKey.length < 64 || connecting}
+                  className={cn(
+                    "w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700",
+                    "text-white border border-gray-600"
+                  )}
+                  size="lg"
+                >
+                  {connecting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Connecting...
+                    </div>
+                  ) : (
+                    <>
+                      <Key className="h-4 w-4 mr-2" />
+                      Connect with Private Key
+                    </>
+                  )}
+                </Button>
+
+                <div className="text-center">
+                  <p className="text-xs text-gray-500">
+                    🔐 <strong>Security Notice:</strong> This connection is not stored and is only used for the current session.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
-  )
+    )
 }
+
+              
