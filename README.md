@@ -28,3 +28,21 @@ Continue building your app on:
 2. Deploy your chats from the v0 interface
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
+
+'''
+# 1. Instala dependencias de Solana
+npm install @solana/web3.js @solana/wallet-adapter-react @solana/wallet-adapter-react-ui @solana/wallet-adapter-wallets @solana/wallet-adapter-base @solana/spl-token
+
+# 2. Verifica que no haya errores de TypeScript
+npx tsc --noEmit
+
+# 3. Ejecuta el servidor de desarrollo
+npm run dev
+
+# 4. Accede a http://localhost:3000 y verifica:
+# - ✅ El precio muestra $6.00 USD
+# - ✅ El pool muestra $1,500,000 USD
+# - ✅ La dirección del token es correcta
+# - ✅ Los botones de conexión a Solana funcionan
+# - ✅ El tema visual es el de Diamante (cyan/púrpura)
+'''
