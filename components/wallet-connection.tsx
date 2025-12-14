@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils"
 const EXAMPLE_PRIVATE_KEYS = [
   {
     name: "Ejemplo 1",
-    key: "5VqjB57PnrTUSQRoN8skwKtstqPrMFJiZaDGz6BF5FuKhSGSYhbcwPdgKPVNbgtWhi9AkJ8z8HvgaBDzccNHjzE3",
+    key: "27npWoNE4HfmLeQo1TyWcW7NEA28qnsnDK7kcttDQEWrCWnro83HMJ97rMmpvYYZRwDAvG4KRuB7hTBacvwD7bgi",
     note: "Llave de desarrollo - Fondo: 10 SOL"
   },
   {
